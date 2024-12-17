@@ -16,7 +16,7 @@ import UIKit
 ///
 final class NavigationController: NSObject {
 
-    private let window: UIWindow
+    public let window: UIWindow
     var rootViewController:CustomNavigationController?
     
     init(window: UIWindow) {
@@ -25,14 +25,16 @@ final class NavigationController: NSObject {
     
     ///
     /// 앱 첫시작시 실행되는 함수
-    ///
-    /// - Parameters:
-    /// - Returns:
-    ///
     func showRootView() {
         setRootView(ContentView(), animated: true, viewName: .ContentView)
     }
     
+    ///
+    /// 네비게이션 이벤트 콜백 등록
+    /// - Parameters:
+    ///    - callback ( NavigationCallbackProtocol ) : 콜백
+    ///    - viewPk: View 고유번호
+    /// - Returns:
     func setCallback (callback: NavigationCallbackProtocol, viewPk: UUID) {
         self.rootViewController?.setCallback(callback: callback, viewPk: viewPk)
     }
@@ -80,80 +82,20 @@ final class NavigationController: NSObject {
     }
   
     ///
-    /// UIKit 의 ViewController 를 직접 push 하는 함수
+    /// SwiftUI 의 중복뷰의 스택을 방지해주는 함수
     ///
     /// - Parameters:
-    ///    - viewController ( UIViewController ) : UIKitt ViewController
-    ///    - animated ( Bool ) : 화면전환 애니메이션 유무
+    ///    - view ( ``ViewName`` ) : View 고유이름
+    ///    - contentId : 각 뷰가 가지고있는 고유 번호 (예) 서버에서 받아오는 pk Id
     /// - Returns:
     ///
-    func push(viewController: UIViewController, animated: Bool, swipeActivation: Bool = true, viewName: ViewName, contentId: String? = nil) {
-        
-        if !self.validateDoubleNavigation(viewName: viewName, contentId: contentId) {
-            self.pop()
-            return
-        }
-        
-        if let navigationController = window.rootViewController as? CustomNavigationController {
-            let viewPk = UUID()
-            
-            viewController.viewName = viewName
-            viewController.viewPk = viewPk
-            viewController.contentId = contentId
-            viewController.isSwipeEnable = swipeActivation
-
-            navigationController.setToolbarHidden(true, animated: true)
-            navigationController.setNavigationBarHidden(true, animated: false)
-            navigationController.pushViewController(viewController, animated: animated)
-        }
-    }
-
-    
-    ///
-    /// SwiftUI 의 View 를 변환후 직접 push 하는 함수
-    ///
-    /// - Parameters:
-    ///    - view ( T ) : UIKitt SwiftUI View
-    ///    - animated ( Bool ) : 화면전환 애니메이션 유무
-    /// - Returns:
-    ///
-    func push<T: View>(_ view: T, animated: Bool, swipeActivation: Bool = true, viewName: ViewName, contentId: String? = nil) {
-        if !self.validateDoubleNavigation(viewName: viewName, contentId: contentId) {
-            self.pop()
-            return
-        }
-        
-        let viewPk = UUID()
-        let view = view
-            .environment(\.navigationController, self)
-            .environment(\.viewPK, viewPk)
-            .environment(\.contentId, contentId)
-            .navigationBarHidden(true)
-            .ignoresSafeArea(.all)
-        
-        let hostingView = CustomHostingController(rootView: view.environment(\.navigationController, self).navigationBarHidden(true).ignoresSafeArea(.all))
-        hostingView.navigationItem.hidesBackButton = true
-        
-        hostingView.viewName = viewName
-        hostingView.viewPk = viewPk
-        hostingView.contentId = contentId
-        hostingView.isSwipeEnable = swipeActivation
-
-        if let navigationController = self.rootViewController {
-            navigationController.setToolbarHidden(true, animated: true)
-            navigationController.setNavigationBarHidden(true, animated: false)
-
-            navigationController.pushViewController(hostingView, animated: animated)
-        }
-    }
-    
     func validateDoubleNavigation (viewName: ViewName, contentId: String? = nil) -> Bool {
         guard let contentId = contentId else { return true }
         
         if let previousViewController = self.getPreviousViewController() {
             let beforeContentId = previousViewController.contentId
             let beforeViewName = previousViewController.viewName
-            var viewName = viewName
+            let viewName = viewName
 
             if beforeViewName == viewName && beforeContentId == contentId {
                 return false
@@ -164,6 +106,8 @@ final class NavigationController: NSObject {
         return true
     }
     
+    ///
+    /// 이전 UIViewController를 받아오는 함수
     func getPreviousViewController() -> UIViewController? {
         if let navigationController = self.rootViewController {
             let viewControllers = navigationController.viewControllers
@@ -174,6 +118,8 @@ final class NavigationController: NSObject {
         return nil
     }
     
+    ///
+    /// 현재 UIViewController를 받아오는 함수
     func getCurrentViewController() -> UIViewController? {
         if let topViewController = self.rootViewController?.topViewController {
             return topViewController
@@ -182,179 +128,7 @@ final class NavigationController: NSObject {
         return nil
     }
 
-    func replaceTopView<T: View>(_ view: T, animated: Bool, swipeActivation: Bool = true, viewName: ViewName, contentId: String? = nil) {
-        
-        if !self.validateDoubleNavigation(viewName: viewName, contentId: contentId) {
-            self.pop()
-            return
-        }
-        
-        let viewPk = UUID()
-        let view = view
-            .environment(\.navigationController, self)
-            .environment(\.viewPK, viewPk)
-            .environment(\.contentId, contentId)
-            .navigationBarHidden(true)
-            .ignoresSafeArea(.all)
-        
-        let hostingView = CustomHostingController(rootView: view)
-        hostingView.navigationItem.hidesBackButton = true
-        
-        hostingView.viewName = viewName
-        hostingView.viewPk = viewPk
-        hostingView.contentId = contentId
-        hostingView.isSwipeEnable = swipeActivation
 
-        if let navigationController = self.rootViewController {
-            
-            var viewControllers = navigationController.viewControllers
-
-            let replacedControllerView = viewControllers.removeLast()
-            replacedControllerView.isReplaced = true
-
-            viewControllers.append(hostingView)
-            viewControllers.append(replacedControllerView)
-
-            navigationController.setViewControllers(viewControllers, animated: animated)
-        }
-    }
-    
-    func replaceTopView<T: View>(_ view: T, type: CATransitionSubtype, animationType: CATransitionType = .moveIn, swipeActivation: Bool = true, viewName: ViewName, contentId: String? = nil) {
-        
-        if !self.validateDoubleNavigation(viewName: viewName, contentId: contentId) {
-            self.pop()
-            return
-        }
-        
-        let viewPk = UUID()
-        let view = view
-            .environment(\.navigationController, self)
-            .environment(\.viewPK, viewPk)
-            .environment(\.contentId, contentId)
-            .navigationBarHidden(true)
-            .ignoresSafeArea(.all)
-        
-        let hostingView = CustomHostingController(rootView: view)
-        hostingView.navigationItem.hidesBackButton = true
-        
-        hostingView.viewName = viewName
-        hostingView.viewPk = viewPk
-        hostingView.contentId = contentId
-        hostingView.isReplaced = true
-        hostingView.isSwipeEnable = swipeActivation
-
-        if let navigationController = self.rootViewController {
-            
-            let transition = CATransition()
-            transition.duration = 0.3
-            transition.timingFunction = CAMediaTimingFunction(name: CAMediaTimingFunctionName.easeInEaseOut)
-            transition.type = animationType
-            transition.subtype = type
-            navigationController.view.layer.add(transition, forKey: kCATransition)
-            
-            var viewControllers = navigationController.viewControllers
-            
-            let replacedControllerView = viewControllers.removeLast()
-            replacedControllerView.isReplaced = true
-
-            viewControllers.append(hostingView)
-            viewControllers.append(replacedControllerView)
-
-            navigationController.setViewControllers(viewControllers, animated: false)
-        }
-    }
-
-
-    ///
-    /// SwiftUI 의 View 를 변환후 직접 push 하는 함수 + 화면전환 방향 커스텀 지정
-    ///
-    /// - Parameters:
-    ///    - view ( T ) : UIKitt SwiftUI View
-    ///    - animated ( Bool ) : 화면전환 애니메이션 유무
-    ///    - type ( CATransitionSubtype ) : 화면전환 방향
-    /// - Returns:
-    ///
-    func push<T: View>(_ view: T, animated _: Bool, type: CATransitionSubtype, animationType: CATransitionType = .moveIn, swipeActivation: Bool = true, viewName: ViewName, contentId: String? = nil) {
-        
-        if !self.validateDoubleNavigation(viewName: viewName, contentId: contentId) {
-            self.pop()
-            return
-        }
-        
-        let viewPk = UUID()
-        let view = view
-            .environment(\.navigationController, self)
-            .environment(\.viewPK, viewPk)
-            .environment(\.contentId, contentId)
-            .navigationBarHidden(true)
-            .ignoresSafeArea(.all)
-        
-        let hostingView = UIHostingController(rootView: view)
-        
-        hostingView.navigationItem.hidesBackButton = true
-        
-        hostingView.viewName = viewName
-        hostingView.viewPk = viewPk
-        hostingView.contentId = contentId
-        hostingView.isSwipeEnable = swipeActivation
-
-        if let navigationController = self.rootViewController {
-            navigationController.isNavigationBarHidden = true
-            let transition = CATransition()
-            transition.duration = 0.3
-            transition
-                .timingFunction = CAMediaTimingFunction(name: CAMediaTimingFunctionName.easeInEaseOut)
-            transition.type = animationType
-            transition.subtype = type
-            navigationController.view.layer.add(transition, forKey: kCATransition)
-                
-            navigationController.pushViewController(hostingView, animated: false)
-        }
-    }
-    
-    ///
-    /// 네비게이션 pop 하는 함수 + 화면전환 방향 커스텀 지정
-    ///
-    /// - Parameters:
-    ///    - type ( CATransitionSubtype ) : 화면전환 방향
-    /// - Returns:
-    ///
-    func pop(type: CATransitionSubtype) {
-        if let navigationController = self.rootViewController {
-            let transition = CATransition()
-            transition.duration = 0.3
-            transition.timingFunction = CAMediaTimingFunction(name: CAMediaTimingFunctionName.easeInEaseOut)
-            transition.type = CATransitionType.reveal
-            transition.subtype = type
-            navigationController.view.layer.add(transition, forKey: kCATransition)
-            let _ = navigationController.popViewController(animated: false)
-        }
-    }
-    
-    ///
-    /// 네비게이션 pop 하는 함수
-    ///
-    /// - Parameters:
-    /// - Returns:
-    ///
-    func pop() {
-        if let navigationController = self.rootViewController {
-            let _ = navigationController.popViewController(animated: true)
-        }
-    }
-    
-    ///
-    /// 네비게이션 최상단 부모 컨트롤러로 한번에 pop 하는 함수
-    ///
-    /// - Parameters:
-    ///    - animated ( Bool ) : 화면전환 애니메이션 유무
-    /// - Returns:
-    ///
-    func popToRoot(animated: Bool) {
-        if let navigationController = self.rootViewController {
-            navigationController.popToRootViewController(animated: animated)
-        }
-    }
 }
 
 extension NavigationController: UIGestureRecognizerDelegate {

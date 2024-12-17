@@ -18,6 +18,7 @@ class CustomNavigationController: UINavigationController, UINavigationController
         print("CustomNavigationController Deinit")
     }
     
+    /// 기존 콜백으로 등록된 리스트 제거후 콜백 호출
     func deinitialize() {
         for viewController in self.viewControllers {
             let viewName = viewController.viewName ?? .None
@@ -36,6 +37,7 @@ class CustomNavigationController: UINavigationController, UINavigationController
         self.callbackList.removeAll()
     }
     
+    /// 콜백 등록
     func setCallback(callback: NavigationCallbackProtocol, viewPk: UUID) {
         if !callbackList.contains(where: { $0.1 == viewPk }) {
             callbackList.append((callback, viewPk))
@@ -47,14 +49,17 @@ class CustomNavigationController: UINavigationController, UINavigationController
         print("콜백 내용 \(callbackList)")
     }
 
+    /// 화면의 가로세로 모드를 정방향으로 고정 [필요에따라 변경]
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
         return topViewController?.supportedInterfaceOrientations ?? .portrait
     }
-
+    /// supportedInterfaceOrientations 와 마찬가지로 가장 최상단뷰의 방향모드를 따라감 고로 이코드에서는
+    /// 방향전환을 허용하지않음
     override var shouldAutorotate: Bool {
         topViewController?.shouldAutorotate ?? true
     }
     
+    /// push한 컨트롤러 (혹은 HostingController) 가 렌더링됬을때의 이벤트
     func navigationController(_ navigationController: UINavigationController, didShow viewController: UIViewController, animated: Bool) {
         if let fromViewController = transitionCoordinator?.viewController(forKey: .from),
            !navigationController.viewControllers.contains(fromViewController) {
@@ -73,6 +78,8 @@ class CustomNavigationController: UINavigationController, UINavigationController
         }
     }
 
+    /// UINavigationController에 있는 내장 함수로 오버라이드를 사용하여 한번에 여러가지 컨트롤러를 push했을때
+    /// 커스텀 로직을 추가할수있다
     override func setViewControllers(_ viewControllers: [UIViewController], animated: Bool) {
         var viewControllers = viewControllers
         let replacedControllerView = viewControllers.removeLast()
@@ -90,6 +97,8 @@ class CustomNavigationController: UINavigationController, UINavigationController
         super.setViewControllers(viewControllers, animated: animated)
     }
 
+    /// UINavigationController에 있는 내장 함수로 오버라이드를 사용하면 push를 했을시
+    /// 커스텀 로직을 추가할수있다
     override func popViewController(animated: Bool) -> UIViewController? {
         let poppedViewController = super.popViewController(animated: animated)
         let isSwipeEnable = poppedViewController?.isSwipeEnable ?? false
@@ -111,6 +120,8 @@ class CustomNavigationController: UINavigationController, UINavigationController
         return poppedViewController
     }
 
+    /// UINavigationController에 있는 내장 함수로 오버라이드를 사용하면 pop를 했을시
+    /// 커스텀 로직을 추가할수있다
     override func pushViewController(_ viewController: UIViewController, animated: Bool) {
          if let shouldPush = shouldPushViewController {
              if !shouldPush(viewController) {
