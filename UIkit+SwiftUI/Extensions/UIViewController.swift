@@ -15,6 +15,7 @@ extension UIViewController {
         return true
     }
     
+    /// 뷰의 이름 [중복가능]
     var viewName: ViewName? {
         get {
             return objc_getAssociatedObject(self, &viewNameKey) as? ViewName
@@ -24,6 +25,7 @@ extension UIViewController {
         }
     }
     
+    /// 뷰의 고유 번호
     var viewPk: UUID? {
         get {
             return objc_getAssociatedObject(self, &viewPkKey) as? UUID
@@ -33,6 +35,7 @@ extension UIViewController {
         }
     }
     
+    /// 스와이프 가능여부
     var isSwipeEnable: Bool? {
         get {
             return objc_getAssociatedObject(self, &isSwipeEnableKey) as? Bool
@@ -42,6 +45,7 @@ extension UIViewController {
         }
     }
 
+    /// 네비게이션 함수중 replace함수로인해 변경되었는지 구분하는 함수
     var isReplaced: Bool? {
         get {
             return objc_getAssociatedObject(self, &isReplacedKey) as? Bool
@@ -51,6 +55,7 @@ extension UIViewController {
         }
     }
 
+    /// 서버에서 받아오는 고유 pk로 화면의 중복여부를 구분하는 함수
     var contentId: String? {
         get {
             return objc_getAssociatedObject(self, &contentIdKey) as? String
